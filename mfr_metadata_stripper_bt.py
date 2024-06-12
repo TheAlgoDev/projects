@@ -7,7 +7,6 @@ This function opens each individual mfr file and pulls the metadata values.
 
 """
 import os
-import glob
 import pandas as pd
 
 
@@ -25,47 +24,58 @@ lines_to_strip = (
     'Temperature Offset')
 
 
-def mfr_metadata_stripper(IV_metadata, lines_to_strip):
-    """ 
+def mfr_metadata_stripper():
+    """
 The only input is ensuring that the directory path is correct.
 The only output is a CSV file that contains all the metadata and data.
 Comment out line 68 to ensure the columns are correct
     """
 
 # Set the directory path for the function to run in
-    directory_path = 'C:/UCF/FSEC/Data/Databases/multiflash/testmfr'
-    filetype = "*.mfr"
-    files = glob.glob(os.path.join(directory_path, filetype))
-
-# Create array to store all the data during the for loop
+    folder = 'C:/UCF/FSEC/Data/Databases/multiflash/testmfr'
+    files = []
+    for dirpath, dirnames, filenames in os.walk(folder):
+        for filename in filenames:
+            if filename.endswith(".mfr"):
+                file = os.path.join(dirpath, filename)
+                files.append(file)
+                print(file)
+    print(f'{len(files)} files found ending in .MFR')
+# Create array to store what is put into data list during the for loop
     stripped_folder = []
+    files_processed = 0
 
 # Open the file path to enable parsing
     for file in files:
-        text_file = open(file)
+        try:
+            text_file = open(file)
+            files_processed += 1
 
-# Create a list to save each modules metadata
-        data_list = []
+    # Create a list to save each module's metadata
+            data_list = []
 
-# Preform splits on basename to get time, date, model-id metadata
-        basename = text_file.name.split('/')[-1]
-        splitname = basename.split("-")[-1].split("_")
-        date, time, serial = splitname[:3]
+    # Preform splits on basename to get date, time, model-id metadata
+            basename = text_file.name.split('/')[-1]
+            splitname = basename.split("-")[-1].split("_")
+            date, time, serial = splitname[:3]
 
-# Save the previous information to be added into array
-        metadata = [basename, date, time, serial]
-        data_list.extend(metadata)
+    # Save the previous information to be added into array
+            metadata = [basename, date, time, serial]
+            data_list.extend(metadata)
 
-# Read the contents of MFR file to extract metadata
-        raw_text = text_file.readlines()
+    # Read the contents of MFR file to extract metadata
+            raw_text = text_file.readlines()
 
-# Strip out unnessasary information from metadata ( = and " )
-        for line in raw_text:
-            if line.startswith(lines_to_strip):
-                line_value = line.replace('"', '').split(' = ')[1]
-                data_list.append(line_value)
-        stripped_folder.append(data_list)
-
+    # Strip out unnessasary information from metadata ( = and " )
+            for line in raw_text:
+                if line.startswith(lines_to_strip):
+                    line_value = line.replace('"', '').split(' = ')[1]
+                    data_list.append(line_value)
+            stripped_folder.append(data_list)
+            text_file.close()
+            print(f'{basename} processed, {files_processed} files complete')
+        except:
+            continue
 # Create dataframe for human readable database, save it as csv
     Sinton_IV_Metadata = pd.DataFrame(stripped_folder, columns=IV_metadata)
     file_path = 'C:/UCF/FSEC/Data/Databases/Sinton_IV_Metadata.csv'
